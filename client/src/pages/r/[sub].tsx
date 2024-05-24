@@ -1,3 +1,4 @@
+import Sidebar from "@/components/Sidebar";
 import { useAuthState } from "@/context/auth";
 import axios from "axios";
 import Image from "next/image";
@@ -8,21 +9,11 @@ import useSWR from "swr";
 const SubPage = () => {
   const [ownSub, setOwnSub] = useState(false);
   const { authenticated, user } = useAuthState();
-  const fetcher = async (url: string) => {
-    try {
-      const res = await axios.get(url);
-      return res.data;
-    } catch (error: any) {
-      throw error.response.data;
-    }
-  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const subName = router.query.sub;
-  const { data: sub, error } = useSWR(
-    subName ? `/subs/${subName}` : null,
-    fetcher
-  );
+  const { data: sub, error } = useSWR(subName ? `/subs/${subName}` : null);
   console.log("sub", sub);
 
   useEffect(() => {
@@ -41,8 +32,7 @@ const SubPage = () => {
     formData.append("type", fileInputRef.current!.name);
 
     try {
-      await axios.post(`/subs/${sub.name}/upload`, {
-        formData,
+      await axios.post(`/subs/${sub.name}/upload`, formData, {
         headers: { "Context-Type": "multipart/form-data" },
       });
     } catch (error) {
@@ -109,7 +99,7 @@ const SubPage = () => {
                   <div className="flex items-center">
                     <h1 className="text-3xl font-bold">{sub.title}</h1>
                   </div>
-                  <p className="text-small font-bold text-gray-400">
+                  <p className="text-sm font-bold text-gray-400">
                     /r/{sub.name}
                   </p>
                 </div>
@@ -117,7 +107,10 @@ const SubPage = () => {
             </div>
           </div>
           {/* 포스트와 사이드바 */}
-          <div className="flex max-w-5xl px-4 pt-5 mx-auto"></div>
+          <div className="flex max-w-5xl px-4 pt-5 mx-auto">
+            <div className="w-full md:mr-3 md:w-8/12"></div>
+            <Sidebar sub={sub} />
+          </div>
         </>
       )}
     </>
