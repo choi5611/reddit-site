@@ -15,7 +15,7 @@ export default function Home() {
     return await axios.get(url).then((res) => res.data);
   };
 
-  const address = "http://localhost:4000/api/subs/sub/topSubs";
+  const address = "/subs/sub/topSubs";
 
   const getKey = (pageIndex: number, previousPageData: Post[]) => {
     if (previousPageData && !previousPageData.length) return null;
