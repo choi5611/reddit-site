@@ -5,18 +5,21 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { FormEvent, useState } from "react";
-import useSWR from "swr";
-
+import useSWR, { mutate } from "swr";
+import classNames from "classnames";
+import { FaArrowDown, FaArrowUp } from "react-icons/fa";
 const PostPage = () => {
   const router = useRouter();
   const { identifier, sub, slug } = router.query;
   const { authenticated, user } = useAuthState();
   const [newComment, setNewComment] = useState("");
 
-  const { data: post, error } = useSWR<Post>(
-    identifier && slug ? `/posts/${identifier}/${slug}/` : null
-  );
-  const { data: comments } = useSWR<Comment[]>(
+  const {
+    data: post,
+    error,
+    mutate: postMutate,
+  } = useSWR<Post>(identifier && slug ? `/posts/${identifier}/${slug}/` : null);
+  const { data: comments, mutate: commentMutate } = useSWR<Comment[]>(
     identifier && slug ? `/posts/${identifier}/${slug}/comments` : null
   );
   console.log("comment", comments);
@@ -30,11 +33,38 @@ const PostPage = () => {
       await axios.post(`/posts/${post?.identifier}/${post?.slug}/comments`, {
         body: newComment,
       });
+
+      commentMutate();
       setNewComment("");
     } catch (error) {
       console.log(error);
     }
   };
+
+  const vote = async (value: number, comment?: Comment) => {
+    if (!authenticated) router.push("/login");
+    //이미 클릭 한 vote 버튼을 눌렀을 시 reset
+    if (
+      (!comment && value === post?.userVote) ||
+      (comment && comment.userVote === value)
+    ) {
+      value = 0;
+    }
+
+    try {
+      await axios.post("/votes", {
+        identifier,
+        slug,
+        commentIdentifier: comment?.identifier,
+        value,
+      });
+      postMutate();
+      commentMutate();
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <div className="flex max-w-5xl px-4 pt-5 mx-auto">
       <div className="w-full md:mr-3 md:w-8/12">
@@ -42,10 +72,40 @@ const PostPage = () => {
           {post && (
             <>
               <div className="flex">
+                {/* 좋아요 싫어요 기능 부분 */}
+                <div className="flex-shrink-0 w-10 py-2 text-center rounded-l">
+                  {/* 좋아요 */}
+                  <div
+                    className="flex justify-center w-6 mx-auto text-gray-400 rounded cursor-pointer hover:bg-gray-300 hover:text-red-500"
+                    onClick={() => vote(1)}
+                  >
+                    {post.userVote === 1 ? (
+                      <FaArrowUp className="mx-auto text-red-500" />
+                    ) : (
+                      <FaArrowUp />
+                    )}
+                  </div>
+                  <p className="text-xs font-bold">{post.voteScore}</p>
+
+                  {/* 좋아요 끝 */}
+                  {/* 싫어요 */}
+                  <div
+                    className="w-6 flex justify-center mx-auto text-gray-400 rounded cursor-pointer hover:bg-gray-300 hover:text-blue-500"
+                    onClick={() => vote(-1)}
+                  >
+                    {post.userVote === -1 ? (
+                      <FaArrowDown className="mx-auto text-blue-500" />
+                    ) : (
+                      <FaArrowDown />
+                    )}
+                  </div>
+                  {/* 싫어요 끝 */}
+                </div>
+                {/* 좋아요 싫어요 기능 부분 끝   */}
                 <div className="py-2 pr-2">
                   <div className="flex items-center">
                     <p className="text-xs text-gray-400">
-                      Posted by
+                      Posted by <i className="fas fa-abacus"></i>
                       <Link href={`/u/${post.username}`} legacyBehavior>
                         <a className="mx-1 hover:underline">
                           /u/{post.username}
@@ -71,7 +131,7 @@ const PostPage = () => {
                 </div>
               </div>
               {/* 댓글 작성 구간 */}
-              <div className=" pr-6 mb-4">
+              <div className=" pr-6 mb-4 pl-5">
                 {authenticated ? (
                   <div>
                     <p className="mb-1 text-ms">
@@ -116,6 +176,34 @@ const PostPage = () => {
               {/* 댓글 리스트 부분 */}
               {comments?.map((comment) => (
                 <div className="flex" key={comment.identifier}>
+                  {/* 좋아요 싫어요 기능 부분 */}
+                  <div className="flex-shrink-0 w-10 py-2 text-center rounded-l">
+                    {/* 좋아요 */}
+                    <div
+                      className="w-6 flex justify-center mx-auto text-gray-400 rounded cursor-pointer hover:bg-gray-300 hover:text-red-500"
+                      onClick={() => vote(1, comment)}
+                    >
+                      {comment.userVote === 1 ? (
+                        <FaArrowUp className="mx-auto text-red-500" />
+                      ) : (
+                        <FaArrowUp />
+                      )}
+                    </div>
+                    <p className="text-xs font-bold">{comment.voteScore}</p>
+                    {/* 좋아요 끝 */}
+                    {/* 싫어요 */}
+                    <div
+                      className="w-6 flex justify-center mx-auto text-gray-400 rounded cursor-pointer hover:bg-gray-300 hover:text-blue-500"
+                      onClick={() => vote(-1, comment)}
+                    >
+                      {comment.userVote === -1 ? (
+                        <FaArrowDown className="mx-auto text-blue-500" />
+                      ) : (
+                        <FaArrowDown />
+                      )}
+                    </div>
+                    {/* 싫어요 끝 */}
+                  </div>
                   <div className="py-2 pr-2">
                     <p className="mb-1 text-xs leading-none">
                       <Link href={`/u/${comment.username}`} legacyBehavior>
